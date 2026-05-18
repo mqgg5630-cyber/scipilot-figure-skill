@@ -11,8 +11,10 @@
 - [4. 箱线图 / 小提琴图（叠 stripplot）](#4-箱线图--小提琴图叠-stripplot)
 - [5. 热力图（感知均匀色图）](#5-热力图感知均匀色图)
 - [6. 误差棒图](#6-误差棒图)
-- [7. 多面板组合图](#7-多面板组合图)
-- [8. Plotly 交互图](#8-plotly-交互图)
+- [7. 分布图（直方图 / KDE）](#7-分布图直方图--kde)
+- [8. 相关性矩阵 / 散点矩阵](#8-相关性矩阵--散点矩阵)
+- [9. 多面板组合图](#9-多面板组合图)
+- [10. Plotly 交互图](#10-plotly-交互图)
 
 ---
 
@@ -317,7 +319,133 @@ export_figure(fig, 'figs/06_errbar', formats=['pdf', 'svg', 'png'],
 
 ---
 
-## 7. 多面板组合图
+## 7. 分布图（直方图 / KDE）
+
+**何时用**：看单个连续变量的分布形态——是否对称、是否双峰、是否偏态、是否有 outlier。
+
+```python
+rng = np.random.default_rng(7)
+# 模拟双峰分布
+data1 = np.concatenate([rng.normal(0, 1, 200), rng.normal(4, 1, 200)])
+# 模拟偏态分布
+data2 = rng.lognormal(0, 0.5, 400)
+
+fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.8), constrained_layout=True)
+
+# === 直方图 + KDE 叠加 ===
+ax = axes[0]
+ax.hist(data1, bins=30, density=True, alpha=0.55,
+        color=OKABE[2], edgecolor='black', linewidth=0.4,
+        label='Histogram')
+# KDE 用 seaborn 直接画在同一 ax
+sns.kdeplot(data1, ax=ax, color=OKABE[6], linewidth=1.2, label='KDE')
+# 在底部加 rug 显示每个原始点
+sns.rugplot(data1, ax=ax, color='black', height=0.04, alpha=0.4)
+ax.set_xlabel('Value'); ax.set_ylabel('Density')
+ax.set_title('Bimodal distribution')
+ax.legend(frameon=False, fontsize=6)
+
+# === 偏态分布 + 中位数 vs 均值 ===
+ax = axes[1]
+ax.hist(data2, bins=30, density=True, alpha=0.55,
+        color=OKABE[3], edgecolor='black', linewidth=0.4)
+sns.kdeplot(data2, ax=ax, color=OKABE[6], linewidth=1.2)
+ax.axvline(data2.mean(), color='red', linestyle='--', linewidth=0.8,
+           label=f'mean={data2.mean():.2f}')
+ax.axvline(np.median(data2), color='black', linestyle=':', linewidth=0.8,
+           label=f'median={np.median(data2):.2f}')
+ax.set_xlabel('Value (log-normal)'); ax.set_ylabel('Density')
+ax.set_title('Right-skewed: mean vs median')
+ax.legend(frameon=False, fontsize=6)
+
+export_figure(fig, 'figs/07_distribution', formats=['pdf', 'svg', 'png'],
+              size_inches=(7.0, 2.8), dpi=300)
+```
+
+**坑**：
+- `bins` 太多 → 噪音；太少 → 平滑过度。`bins='auto'` 是不错的起点
+- KDE 在数据稀少（n<30）时**不可靠**——直方图更诚实
+- 多组叠加分布 → 用 `alpha=0.4` 透明色块；更建议用 small multiples 分面画
+- 偏态强烈 → 同时显示均值（红虚）和中位数（黑点）让审稿人看出差异
+- 看到双峰立刻警觉：是否分组结构没拆？
+
+---
+
+## 8. 相关性矩阵 / 散点矩阵
+
+**何时用**：多个连续变量（3-20+）想看两两关系。**变量 ≤ 8 用 pairplot，> 8 用 heatmap**。
+
+### 8a. 相关性热力图
+
+```python
+# 模拟 6 列数据
+rng = np.random.default_rng(8)
+n = 200
+base = rng.normal(0, 1, n)
+df = pd.DataFrame({
+    'feature_A': base + rng.normal(0, 0.5, n),
+    'feature_B': base + rng.normal(0, 0.3, n),
+    'feature_C': -base + rng.normal(0, 0.4, n),
+    'feature_D': rng.normal(0, 1, n),
+    'feature_E': rng.normal(0, 1, n),
+    'feature_F': base * 0.5 + rng.normal(0, 0.6, n),
+})
+corr = df.corr(method='pearson')
+
+# 半矩阵更易读（对称，画一半就够）
+mask = np.triu(np.ones_like(corr, dtype=bool), k=1)
+
+fig, ax = plt.subplots(figsize=(4.0, 3.5))
+sns.heatmap(
+    corr, mask=mask,
+    cmap='RdBu_r', vmin=-1, vmax=1, center=0,
+    annot=True, fmt='.2f', annot_kws={'fontsize': 6},
+    cbar_kws={'label': "Pearson's r", 'shrink': 0.7},
+    linewidths=0.5, linecolor='white',
+    square=True, ax=ax,
+)
+ax.tick_params(labelsize=6)
+ax.set_title('Feature correlations', fontsize=8)
+
+export_figure(fig, 'figs/08a_corr_heatmap', formats=['pdf', 'svg', 'png'],
+              size_inches=(4.0, 3.5), dpi=300)
+```
+
+### 8b. 散点矩阵 (pairplot)
+
+```python
+# pairplot 适合 ≤ 8 列；超过就糊
+import seaborn as sns
+df_sub = df[['feature_A', 'feature_B', 'feature_C', 'feature_D']].copy()
+df_sub['group'] = rng.choice(['Ctrl', 'Treat'], n)
+
+g = sns.pairplot(
+    df_sub, hue='group',
+    palette={'Ctrl': OKABE[2], 'Treat': OKABE[6]},
+    plot_kws=dict(s=10, alpha=0.6, edgecolor='black', linewidth=0.2),
+    diag_kws=dict(linewidth=0.8),
+    height=1.4,           # 每个子图英寸数；总尺寸 ≈ height × n_cols
+    aspect=1.0,
+)
+g.fig.set_size_inches(6.0, 6.0)
+for ax in g.axes.flat:
+    if ax is not None:
+        ax.tick_params(labelsize=6)
+        ax.set_xlabel(ax.get_xlabel(), fontsize=7)
+        ax.set_ylabel(ax.get_ylabel(), fontsize=7)
+
+export_figure(g.fig, 'figs/08b_pairplot', formats=['pdf', 'svg', 'png'],
+              size_inches=(6.0, 6.0), dpi=300)
+```
+
+**坑**：
+- pairplot 变量数 > 8 → 子图小于 1 in，肉眼不可读
+- 配 `hue` 区分组要有意义，否则把对角分布看糊
+- 上三角和下三角都画相关图 = 信息冗余；用 `mask` 只画一半
+
+---
+
+## 9. 多面板组合图
 
 **何时用**：一篇论文一张 Figure 通常 2-6 个子图；要保证子图字号、配色、坐标尺度一致。
 
@@ -364,7 +492,7 @@ for ax, label in zip(axes.flat, ['a', 'b', 'c', 'd']):
     ax.text(-0.20, 1.05, label, transform=ax.transAxes,
             fontsize=9, fontweight='bold', va='top', ha='right')
 
-export_figure(fig, 'figs/07_panels', formats=['pdf', 'svg', 'png'],
+export_figure(fig, 'figs/09_panels', formats=['pdf', 'svg', 'png'],
               size_inches=(7.2, 5.4), dpi=300, grayscale_preview=True)
 ```
 
@@ -376,7 +504,7 @@ export_figure(fig, 'figs/07_panels', formats=['pdf', 'svg', 'png'],
 
 ---
 
-## 8. Plotly 交互图
+## 10. Plotly 交互图
 
 **何时用**：补充材料、博客、需要 hover 数据的 web 端展示。**正式投稿 PDF 不用 plotly**——投稿系统不接受 HTML。
 
@@ -405,8 +533,8 @@ fig = px.scatter(
     title='剂量响应曲线（交互版）',
 )
 fig.update_layout(**common_layout)
-fig.write_html('figs/08_interactive.html')
-fig.write_image('figs/08_interactive.pdf', width=500, height=350)  # 需 pip install kaleido
+fig.write_html('figs/10_interactive.html')
+fig.write_image('figs/10_interactive.pdf', width=500, height=350)  # 需 pip install kaleido
 ```
 
 **坑**：
