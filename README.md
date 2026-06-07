@@ -5,7 +5,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python: 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg)](#dependencies--依赖)
-[![Status: v2.0.0](https://img.shields.io/badge/Status-v2.0.0-success.svg)](#)
+[![Status: v2.1.0](https://img.shields.io/badge/Status-v2.1.0-success.svg)](#)
 [![Advisor Mode](https://img.shields.io/badge/Mode-Advisor%2BPlotter-c41e3a.svg)](#为什么这不只是个画图工具)
 [![Stack](https://img.shields.io/badge/Stack-matplotlib%20%7C%20seaborn%20%7C%20plotly-orange.svg)](#)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange.svg)](https://claude.com/claude-code)
@@ -52,10 +52,27 @@ A [Claude Code](https://claude.com/claude-code) / [Codex](https://github.com/ope
    ↓
 5. 绘制       ── plot_recipes.md：9 类图配方
    ↓
-6. 自检       ── viz_pitfalls.md + publication_checklist.md
+6. 自检闭环   ── 程序自检 visual_qa + AI 读图 visual_review.md（缺字/裁切/重叠/对齐→回改）
    ↓
 7. 导出       ── export_figure.py：多格式+按最终尺寸+灰度预览
 ```
+
+### v2.1 新增：出图后的视觉自检闭环
+
+普通画图工具画完就结束——没人回看成图，于是中文方框、文字被裁、图例压数据、子图编号乱放，全留到投稿才暴露。v2.1 补上**出图后的闭环**：
+
+```
+绘制 → 渲染 PNG → 程序自检(缺字/裁切/重叠) + AI 读图(遮盖/子图对齐/灰度)
+                            ↓ 发现问题
+        回到对应步骤改图 → 重渲 → 再读，直到通过
+```
+
+- **程序抓确定性问题**：`visual_qa.audit_layout()` 同时盯 warning + logging 两条通道拦截缺字乱码，并查文字越界裁切、刻度标签重叠。
+- **AI 读图抓感知性问题**：渲成 PNG 后用多模态读图能力核对图例是否压数据、子图 a/b/c 是否对齐、配色灰度可分——这些程序查不出。
+- **子图标签一行对齐**：`layout_tools.add_panel_labels(fig)` 用统一 figure 坐标让 a/b/c/d 横竖成线，不再手摆易错位。
+- **字体兜底**：`setup_style` 全模式默认修负号方框 + 自动配 CJK 字体，从源头少出乱码。
+
+详见 [`references/visual_review.md`](references/visual_review.md)。
 
 ### 五条硬性原则
 
@@ -76,6 +93,8 @@ A [Claude Code](https://claude.com/claude-code) / [Codex](https://github.com/ope
 - **P6**：x 是分类用折线连均值 → 散点 / 柱状
 - **P14**：rainbow / jet 色图 → viridis / RdBu_r
 - **P12**：一图多论点 → 拆图，一图一结论
+- **P16**：中文/负号变方框 → setup_style 配 CJK + 关 unicode_minus，导出前 visual_qa 拦截
+- **P18**：子图 a/b/c 乱放 → add_panel_labels 统一对齐
 
 ### 安装
 
@@ -166,7 +185,7 @@ python scripts/check_figure.py figs/*.pdf --min-dpi 300 --strict
 | Skill | 状态 | 功能 |
 |---|---|---|
 | scipilot-cite-skill | [v1.0.0](https://github.com/Haojae/scipilot-cite-skill) | 文献检索与引用插入 |
-| **scipilot-figure-skill** | **v2.0.0 (本仓库)** | **科研数据可视化顾问 + 绘制** |
+| **scipilot-figure-skill** | **v2.1.0 (本仓库)** | **可视化顾问 + 绘制 + 视觉自检闭环** |
 | scipilot-polish-skill | 规划中 | 学术论文润色 |
 | scipilot-review-skill | 规划中 | AI 模拟审稿 |
 | scipilot-submit-skill | 规划中 | 投稿格式适配 |
@@ -212,10 +231,27 @@ plt.bar()                Asks: "What argument do you want this figure to make?"
    ↓
 5. Plot         — plot_recipes.md: 9 recipe families
    ↓
-6. Audit        — viz_pitfalls.md + publication_checklist.md
+6. Self-check   — visual_qa (program) + AI reads the PNG (visual_review.md): glyphs/clipping/overlap/alignment
    ↓
 7. Export       — export_figure.py: multi-format + final size + grayscale
 ```
+
+### New in v2.1: a post-render visual self-check loop
+
+Generic plotters stop at "saved" — nobody looks at the result, so CJK tofu boxes, clipped labels, legends covering data, and misaligned panel letters all survive to submission. v2.1 closes the loop **after rendering**:
+
+```
+plot → render PNG → program audit (glyphs/clipping/overlap) + AI reads image (occlusion/panel alignment/grayscale)
+                              ↓ issues found
+       go back, fix, re-render, re-read — until clean
+```
+
+- **Program catches deterministic issues**: `visual_qa.audit_layout()` traps missing-glyph warnings (both warnings and logging channels), text clipped off-canvas, and overlapping tick labels.
+- **AI catches perceptual issues**: after rasterizing to PNG, the skill reads the image to check whether the legend covers data, whether panel letters a/b/c line up, and whether colors stay distinct in grayscale.
+- **One-call panel alignment**: `layout_tools.add_panel_labels(fig)` places a/b/c/d in unified figure coordinates so they align both ways.
+- **Font safety net**: `setup_style` fixes the minus-sign box in all modes and auto-configures CJK fonts.
+
+See [`references/visual_review.md`](references/visual_review.md).
 
 ### Five hard rules
 
@@ -234,6 +270,8 @@ Full 15 in [`references/viz_pitfalls.md`](references/viz_pitfalls.md).
 - **P3**: pie charts and 3D bars → horizontal bar
 - **P14**: rainbow / jet colormaps → viridis / RdBu_r
 - **P12**: one figure with five points → split, one figure per claim
+- **P16**: CJK / minus-sign tofu boxes → setup_style configures CJK + disables unicode_minus; visual_qa blocks leftover missing glyphs
+- **P18**: scattered panel letters → add_panel_labels aligns a/b/c in one call
 
 ### Installation
 
@@ -290,7 +328,7 @@ Nature double column.
 | Skill | Status | Purpose |
 |---|---|---|
 | scipilot-cite-skill | [v1.0.0](https://github.com/Haojae/scipilot-cite-skill) | Reference discovery & insertion |
-| **scipilot-figure-skill** | **v2.0.0 (this repo)** | **Visualization advisor + renderer** |
+| **scipilot-figure-skill** | **v2.1.0 (this repo)** | **Advisor + renderer + visual self-check loop** |
 | scipilot-polish-skill | Planned | Academic prose polishing |
 | scipilot-review-skill | Planned | AI peer-review simulation |
 | scipilot-submit-skill | Planned | Submission formatting |
@@ -313,6 +351,7 @@ Pillow>=10.0
 SciencePlots>=2.1   # optional
 pypdf>=4.0          # optional
 kaleido>=0.2.1      # optional
+PyMuPDF>=1.23       # optional; only for visual_qa.render_preview() of saved PDFs
 ```
 
 Python 3.9+ recommended.

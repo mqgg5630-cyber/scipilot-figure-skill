@@ -10,3 +10,4 @@ scipy>=1.10
 # SciencePlots>=2.1
 # pypdf>=4.0
 # kaleido>=0.2.1
+# PyMuPDF>=1.23      # only for visual_qa.render_preview() of already-saved PDFs
