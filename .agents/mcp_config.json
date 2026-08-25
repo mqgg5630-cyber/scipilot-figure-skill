@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "scipilot-figure": {
+      "command": "python",
+      "args": ["mcp_launcher.py"],
+      "cwd": "."
+    }
+  }
+}

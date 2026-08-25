@@ -4,19 +4,65 @@
 > SciPilot Skills 家族成员 — 科研数据**可视化顾问**，先思考后绘制。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python: 3.9+](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg)](#dependencies--依赖)
-[![Status: v2.1.0](https://img.shields.io/badge/Status-v2.1.0-success.svg)](#)
+[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg)](#dependencies--依赖)
+[![Status: v2.2.0](https://img.shields.io/badge/Status-v2.2.0-success.svg)](#)
 [![Advisor Mode](https://img.shields.io/badge/Mode-Advisor%2BPlotter-c41e3a.svg)](#为什么这不只是个画图工具)
 [![Stack](https://img.shields.io/badge/Stack-matplotlib%20%7C%20seaborn%20%7C%20plotly-orange.svg)](#)
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-orange.svg)](https://claude.com/claude-code)
+[![Antigravity](https://img.shields.io/badge/Google%20Antigravity-Skill%20%2B%20MCP-4285F4.svg)](https://antigravity.google/)
+[![MCP](https://img.shields.io/badge/MCP-stdio-7C3AED.svg)](https://modelcontextprotocol.io/)
 
-A [Claude Code](https://claude.com/claude-code) / [Codex](https://github.com/openai/codex) / Cursor Skill that does **two things in order**: (1) profiles your data and recommends the right chart for the argument you want to make, (2) renders it at publication grade for Nature / Science / IEEE / Elsevier / PNAS / Chinese journals. Built on **matplotlib + seaborn + SciencePlots** (static) and **plotly** (interactive), with **CJK font auto-configuration** so Chinese text never renders as boxes.
+A Google Antigravity / [Claude Code](https://claude.com/claude-code) / [Codex](https://github.com/openai/codex) / Cursor Skill that does **two things in order**: (1) profiles your data and recommends the right chart for the argument you want to make, (2) renders it at publication grade for Nature / Science / IEEE / Elsevier / PNAS / Chinese journals. Built on **matplotlib + seaborn + SciencePlots** (static) and **plotly** (interactive), with **CJK font auto-configuration** so Chinese text never renders as boxes.
 
 > [中文文档](#中文文档) | [English](#english)
 
 ---
 
 ## 中文文档
+
+### Google Antigravity：克隆后直接调用
+
+仓库已同时提供 Antigravity 原生 **Skill + MCP**：
+
+```text
+.agents/
+├── mcp_config.json                         # 自动注册本地 stdio MCP
+└── skills/scipilot-figure-skill/SKILL.md  # 自动发现工作区 Skill
+mcp_server.py                               # MCP 服务入口
+```
+
+```bash
+# 克隆并准备环境（Python 3.10+）
+git clone https://github.com/mqgg5630-cyber/scipilot-figure-skill.git
+cd scipilot-figure-skill
+python mcp_launcher.py --setup-only
+```
+
+然后用 Antigravity 打开该仓库，进入 **Settings → Customizations → Installed MCP
+Servers**（CLI 中输入 `/mcp`），刷新并启用 `scipilot-figure`。工作区配置会直接启动
+`python mcp_launcher.py`，无需复制 JSON。launcher 会使用仓库内的 `.venv`，若尚未
+准备环境则会自动安装依赖。可以直接说：
+
+```text
+请使用 scipilot-figure skill，先分析 results.csv，再推荐论文图。
+请调用 profile_dataset 分析数据。
+请调用 audit_figure 检查 figs/figure1.pdf，目标 300 DPI。
+```
+
+MCP 暴露四个工具：
+
+| 工具 | 功能 |
+|---|---|
+| `profile_dataset` | 剖析 CSV / Excel：类型、缺失、分布、异常、相关、分组 n |
+| `audit_figure` | 只读审计 PDF/SVG/EPS/PNG/TIFF/JPEG 的格式、DPI、尺寸和字体 |
+| `get_figure_guidance` | 按需读取选图、期刊规范、配方、避坑、视觉复核指南 |
+| `list_figure_capabilities` | 返回支持格式和完整工作流 |
+
+> 安全说明：MCP 仅读取显式传入的数据/图片路径，不上传数据，不提供删除工具；
+> `audit_figure` 也是只读操作。详细绘图仍由 Antigravity 按 Skill 工作流在当前工作区执行。
+
+手动测试 MCP 服务可运行 `python mcp_launcher.py`（stdio 服务会等待 MCP 客户端连接，
+这不是卡死）。其他 MCP 客户端也可使用同样的 `command` / `args` / `cwd` 配置。
 
 ### 概览
 
@@ -185,7 +231,7 @@ python scripts/check_figure.py figs/*.pdf --min-dpi 300 --strict
 | Skill | 状态 | 功能 |
 |---|---|---|
 | scipilot-cite-skill | [v1.0.0](https://github.com/Haojae/scipilot-cite-skill) | 文献检索与引用插入 |
-| **scipilot-figure-skill** | **v2.1.0 (本仓库)** | **可视化顾问 + 绘制 + 视觉自检闭环** |
+| **scipilot-figure-skill** | **v2.2.0 (本仓库)** | **可视化顾问 + 绘制 + 视觉自检闭环** |
 | scipilot-writing-skill | [v1.0.0](https://github.com/Haojae/scipilot-writing-skill) | 学术写作与润色 |
 | scipilot-review-skill | 规划中 | AI 模拟审稿 |
 | scipilot-submit-skill | 规划中 | 投稿格式适配 |
@@ -198,6 +244,24 @@ python scripts/check_figure.py figs/*.pdf --min-dpi 300 --strict
 ---
 
 ## English
+
+### Google Antigravity: clone-and-use Skill + MCP
+
+This repository includes a workspace-native Antigravity skill at
+`.agents/skills/scipilot-figure-skill/SKILL.md` and a local stdio MCP definition
+at `.agents/mcp_config.json`.
+
+```bash
+git clone https://github.com/mqgg5630-cyber/scipilot-figure-skill.git
+cd scipilot-figure-skill
+python mcp_launcher.py --setup-only
+```
+
+Open the cloned folder in Antigravity, refresh `scipilot-figure` under the MCP
+manager, and ask the agent to use the skill. Available MCP tools are
+`profile_dataset`, `audit_figure`, `get_figure_guidance`, and
+`list_figure_capabilities`. The server is local and read-only with respect to
+input data and exported figures.
 
 ### Overview
 
@@ -328,7 +392,7 @@ Nature double column.
 | Skill | Status | Purpose |
 |---|---|---|
 | scipilot-cite-skill | [v1.0.0](https://github.com/Haojae/scipilot-cite-skill) | Reference discovery & insertion |
-| **scipilot-figure-skill** | **v2.1.0 (this repo)** | **Advisor + renderer + visual self-check loop** |
+| **scipilot-figure-skill** | **v2.2.0 (this repo)** | **Advisor + renderer + visual self-check loop** |
 | scipilot-writing-skill | [v1.0.0](https://github.com/Haojae/scipilot-writing-skill) | Writing & polishing |
 | scipilot-review-skill | Planned | AI peer-review simulation |
 | scipilot-submit-skill | Planned | Submission formatting |
@@ -341,10 +405,13 @@ Nature double column.
 ### Dependencies / 依赖
 
 ```
+mcp>=1.12,<2
 matplotlib>=3.7
 seaborn>=0.13
 plotly>=5.18
 pandas>=2.0
+openpyxl>=3.1
+xlrd>=2.0
 numpy>=1.24
 scipy>=1.10
 Pillow>=10.0
@@ -354,4 +421,4 @@ kaleido>=0.2.1      # optional
 PyMuPDF>=1.23       # optional; only for visual_qa.render_preview() of saved PDFs
 ```
 
-Python 3.9+ recommended.
+Python 3.10+ required.
