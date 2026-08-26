@@ -4,9 +4,9 @@
 
 ## 文件
 
-- `ml_umami_peptide_screening.svg`：主交付物，1800 × 1260，所有文字、形状和箭头均可编辑。
+- `ml_umami_peptide_screening.svg`：主交付物，1800 × 1200，所有文字、图标、形状和箭头均可编辑。
 - `ml_umami_peptide_screening.png`：快速预览，不建议用于后续编辑。
-- `generate_figure.py`：零第三方依赖的 SVG 生成源代码。
+- `generate_figure.py`：零第三方依赖的 SVG 生成源代码，内含原创食物、蛋白链、质谱、数据库、AI 网络、受体、感官与食品基质矢量图标。
 - `SOURCES.md`：图中框架对应的文献与 DOI。
 
 ## 重新生成
